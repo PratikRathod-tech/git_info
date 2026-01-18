@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Git Dominion</title>
+
+  <!-- Tailwind CSS (CDN for now) -->
+  <!-- <script src="https://cdn.tailwindcss.com"></script>  -->
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="./css/custom.css" />
+
+</head>
+<body class="bg-gray-100 text-gray-900">
+
+  <!-- APP WRAPPER -->
+  <div id="app" class="min-h-screen flex">
+
+    <!-- SIDEBAR (Web Component later) -->
+    <!-- SIDEBAR (Web Component) -->
+<aside class="w-64 bg-gray-900 text-white p-4">
+  <side-nav></side-nav>
+</aside>
+
+
+    <!-- MAIN CONTENT -->
+    <main id="content" class="flex-1 p-6">
+      <!-- Progress Bar -->
+      <div class="mb-4">
+        <div class="w-full bg-gray-300 rounded h-2">
+          <div
+            id="progress-bar"
+            class="bg-green-500 h-2 rounded"
+            style="width: 0%"
+          ></div>
+        </div>
+      </div>
+
+      <h2 class="text-2xl font-semibold mb-4">
+        Welcome
+      </h2>
+      <p class="text-gray-700">
+        Select a topic from the sidebar to begin your Git → GitHub mastery.
+      </p>
+    </main>
+
+  </div>
+
+  <!-- App Logic -->
+  <script src="./js/data.js"></script>
+  <script src="./components/sidebar.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>
