@@ -1,13 +1,10 @@
 class SideNav extends HTMLElement {
   connectedCallback() {
-    // 🔒 Only allow access up to this level
-    //this.unlockedLevel = 8;
-
-    // ✔ Completed topics (for checkmarks)
+    // ✔ Completed topics (persistent)
     this.completedTopics =
       JSON.parse(localStorage.getItem("completedTopics")) || [];
 
-    // 🔁 Flattened list for keyboard navigation
+    // 🔁 Flatten topics with level info
     this.flatTopics = syllabus.flatMap(section =>
       section.topics.map(topic => ({
         ...topic,
@@ -15,10 +12,10 @@ class SideNav extends HTMLElement {
       }))
     );
 
-    // 👉 Active index ONLY among unlocked topics
+    // Active index refers ONLY to unlocked topics
     this.activeIndex = 0;
 
-    // Make sidebar focusable
+    // Focusable for keyboard navigation
     this.tabIndex = 0;
 
     this.render();
@@ -26,40 +23,39 @@ class SideNav extends HTMLElement {
   }
 
   // ===============================
-  // Keyboard Navigation
+  // Keyboard Navigation (SAFE)
   // ===============================
   handleKeyDown(e) {
-    const unlockedTopics = this.flatTopics.filter(
-      t => t.level <= this.unlockedLevel
-    );
+    const unlocked = this.getUnlockedTopics();
+    if (!unlocked.length) return;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      this.activeIndex =
-        (this.activeIndex + 1) % unlockedTopics.length;
-      this.updateActive(unlockedTopics);
+      this.activeIndex = (this.activeIndex + 1) % unlocked.length;
+      this.updateActive(unlocked);
     }
 
     if (e.key === "ArrowUp") {
       e.preventDefault();
       this.activeIndex =
-        (this.activeIndex - 1 + unlockedTopics.length) %
-        unlockedTopics.length;
-      this.updateActive(unlockedTopics);
+        (this.activeIndex - 1 + unlocked.length) % unlocked.length;
+      this.updateActive(unlocked);
     }
 
     if (e.key === "Enter") {
-      const topic = unlockedTopics[this.activeIndex];
-      this.selectTopic(topic);
+      const topic = unlocked[this.activeIndex];
+      if (topic) this.selectTopic(topic);
     }
   }
 
   // ===============================
-  // Dispatch topic selection
+  // Helpers
   // ===============================
-  selectTopic(topic) {
-    if (!topic) return;
+  getUnlockedTopics() {
+    return this.flatTopics.filter(t => !t.locked);
+  }
 
+  selectTopic(topic) {
     this.dispatchEvent(
       new CustomEvent("topic-selected", {
         detail: topic,
@@ -68,23 +64,21 @@ class SideNav extends HTMLElement {
     );
   }
 
-  // ===============================
-  // Update active visual state
-  // ===============================
   updateActive(unlockedTopics) {
-    const items = this.querySelectorAll(".side-item");
-    items.forEach(el => el.classList.remove("active"));
+    this.querySelectorAll(".side-item").forEach(el =>
+      el.classList.remove("active")
+    );
 
     const topic = unlockedTopics[this.activeIndex];
     if (!topic) return;
 
-    const activeEl = this.querySelector(
+    const el = this.querySelector(
       `.side-item[data-id="${topic.id}"]`
     );
 
-    if (activeEl) {
-      activeEl.classList.add("active");
-      activeEl.focus();
+    if (el) {
+      el.classList.add("active");
+      el.focus({ preventScroll: true });
     }
   }
 
@@ -101,13 +95,9 @@ class SideNav extends HTMLElement {
     `;
 
     const nav = this.querySelector("nav");
-    let visualIndex = 0;
+    let unlockedIndex = 0;
 
     syllabus.forEach(section => {
-      const levelNumber = parseInt(section.level.match(/\d+/)[0]);
-      const isSectionLocked = levelNumber > this.unlockedLevel;
-
-      // Section title
       const sectionTitle = document.createElement("h3");
       sectionTitle.className =
         "mt-6 mb-2 text-sm font-semibold text-gray-400";
@@ -115,18 +105,15 @@ class SideNav extends HTMLElement {
       nav.appendChild(sectionTitle);
 
       section.topics.forEach(topic => {
-        const isLocked = isSectionLocked;
-
         const btn = document.createElement("button");
         btn.type = "button";
         btn.dataset.id = topic.id;
 
-        // 🔹 Base styling
         btn.className =
           "side-item flex justify-between items-center w-full px-3 py-2 rounded text-left text-sm transition-all duration-200";
 
-        if (isLocked) {
-          // 🔒 Locked topics
+        // 🔒 Locked topic
+        if (topic.locked) {
           btn.classList.add(
             "opacity-40",
             "cursor-not-allowed",
@@ -134,38 +121,25 @@ class SideNav extends HTMLElement {
             "text-gray-400"
           );
         } else {
-          // ✅ Unlocked topics
-          btn.classList.add(
-            "hover:bg-gray-700",
-            "focus:outline-none",
-            "focus:ring-2",
-            "focus:ring-green-500"
-          );
-
-          // Active topic highlight
-          if (visualIndex === this.activeIndex) {
+          // ✅ Unlocked topic
+          if (unlockedIndex === this.activeIndex) {
             btn.classList.add("active");
           }
 
-          // Click handler ONLY for unlocked topics
           btn.addEventListener("click", () => {
-            this.activeIndex = visualIndex;
-            this.updateActive(
-              this.flatTopics.filter(
-                t => t.level <= this.unlockedLevel
-              )
-            );
+            this.activeIndex = unlockedIndex;
+            this.updateActive(this.getUnlockedTopics());
             this.selectTopic(topic);
           });
 
-          visualIndex++;
+          unlockedIndex++;
         }
 
         // Label
         const label = document.createElement("span");
         label.textContent = topic.title;
 
-        // ✔ Completion check
+        // ✔ Completion indicator
         const check = document.createElement("span");
         if (this.completedTopics.includes(topic.id)) {
           check.textContent = "✔";
@@ -178,7 +152,7 @@ class SideNav extends HTMLElement {
       });
     });
 
-    // Attach keyboard handler AFTER render
+    // Keyboard handler
     this.onkeydown = this.handleKeyDown.bind(this);
   }
 }
