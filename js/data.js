@@ -11,47 +11,105 @@ const syllabus = [
           {
   id: "what-is-vcs",
   title: "What is Version Control?",
-  summary: "Definition and basic purpose of version control systems.",
+  summary: "Formal definition, objectives, scope, and professional importance of version control systems.",
   content: `
     <h2 class="text-3xl font-bold mb-4">What is Version Control?</h2>
 
     <p class="mb-4">
-      Version control is a system that records changes to files over time so that
-      you can recall, compare, and restore specific versions later.
+      <strong>Version Control</strong>, also known as <strong>Source Code Management (SCM)</strong>,
+      is a disciplined system for recording changes made to files over time, managing multiple
+      versions of those files, and enabling controlled access, comparison, traceability, and recovery.
     </p>
 
     <p class="mb-4">
-      In software development, it acts as a <strong>memory system</strong> for your code.
-      Every meaningful change is stored as history, not overwritten.
+      In professional engineering environments, version control is not optional — it is
+      <strong>infrastructure</strong>.
     </p>
 
-    <h3 class="text-xl font-semibold mb-2">Core Idea</h3>
+    <h3 class="text-xl font-semibold mb-2">Meaning of a Version</h3>
     <p class="mb-4">
-      Instead of working on a single fragile copy of code, version control allows
-      developers to work safely, experiment freely, and recover from mistakes.
+      A <strong>version</strong> represents a complete, recorded state of a project at a specific
+      point in time. It is not merely a backup or file copy.
     </p>
 
-    <h3 class="text-xl font-semibold mb-2">What Version Control Solves</h3>
     <ul class="list-disc pl-6 mb-4">
-      <li>Accidental deletion or mistakes</li>
-      <li>Conflicts between multiple developers</li>
-      <li>Lack of history and accountability</li>
-      <li>Fear of experimenting with new ideas</li>
+      <li>Exact file content</li>
+      <li>Metadata (author, timestamp, intent)</li>
+      <li>Relationship to previous and future versions</li>
     </ul>
 
-    <h3 class="text-xl font-semibold mb-2">Real-World Example</h3>
     <p class="mb-4">
-      Imagine editing a document with no undo button. Every mistake would be permanent.
-      Version control is the <strong>undo, timeline, and collaboration system</strong>
-      for software.
+      This transforms files into <strong>historical evidence of decisions</strong>.
     </p>
 
-    <h3 class="text-xl font-semibold mb-2">Interview Insight</h3>
+    <h3 class="text-xl font-semibold mb-2">Core Objectives of Version Control</h3>
+    <ul class="list-disc pl-6 mb-4">
+      <li><strong>Traceability</strong> — who changed what, when, and why</li>
+      <li><strong>Accountability</strong> — every change has a clear owner</li>
+      <li><strong>Consistency</strong> — stable baselines for all contributors</li>
+      <li><strong>Recoverability</strong> — mistakes are reversible</li>
+    </ul>
+
+    <h3 class="text-xl font-semibold mb-2">Problems It Solves</h3>
+    <p class="mb-4">
+      Without version control, files are overwritten, bugs lose their origin, and collaboration
+      becomes chaotic. With version control, changes are isolated, conflicts are detected early,
+      and experimentation becomes safe.
+    </p>
+
+    <h3 class="text-xl font-semibold mb-2">Version Control as Time Control</h3>
+    <p class="mb-4 italic">
+      Version control is controlled time navigation for a project.
+    </p>
+
+    <p class="mb-4">
+      Backups preserve data. Version control preserves <strong>reasoning and evolution</strong>.
+    </p>
+
+    <h3 class="text-xl font-semibold mb-2">Beyond Source Code</h3>
+    <ul class="list-disc pl-6 mb-4">
+      <li>Documentation</li>
+      <li>Configuration files</li>
+      <li>Research data</li>
+      <li>Infrastructure definitions</li>
+    </ul>
+
+    <h3 class="text-xl font-semibold mb-2">Version Control vs Backup</h3>
+    <table class="table-auto border-collapse border border-gray-400 mb-4">
+      <thead>
+        <tr>
+          <th class="border border-gray-400 px-2 py-1">Aspect</th>
+          <th class="border border-gray-400 px-2 py-1">Backup</th>
+          <th class="border border-gray-400 px-2 py-1">Version Control</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border px-2 py-1">Purpose</td>
+          <td class="border px-2 py-1">Data recovery</td>
+          <td class="border px-2 py-1">Change management</td>
+        </tr>
+        <tr>
+          <td class="border px-2 py-1">History</td>
+          <td class="border px-2 py-1">Shallow</td>
+          <td class="border px-2 py-1">Structured & deep</td>
+        </tr>
+        <tr>
+          <td class="border px-2 py-1">Collaboration</td>
+          <td class="border px-2 py-1">No</td>
+          <td class="border px-2 py-1">Core feature</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 class="text-xl font-semibold mb-2">Core Truth</h3>
     <p class="italic text-gray-600">
-      Version control is not about storing code — it is about controlling change.
+      Version control exists because human memory is unreliable and human collaboration is chaotic.
+      It replaces assumption with evidence.
     </p>
   `
 }
+
 ,
           {
             id: "why-vcs-exists",

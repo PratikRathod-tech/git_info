@@ -1,11 +1,10 @@
 // ===============================
-// Lenis Smooth Scroll (FORCED)
+// Lenis Smooth Scroll
 // ===============================
 const lenis = new Lenis({
-  duration: 1.1,
-  smooth: true,
-  direction: "vertical",
-  smoothTouch: true
+  duration: 1,
+  smoothWheel: true,
+  smoothTouch: false
 });
 
 function raf(time) {
@@ -15,164 +14,48 @@ function raf(time) {
 requestAnimationFrame(raf);
 
 // ===============================
-// State
+// Core Elements
 // ===============================
 const content = document.getElementById("content");
+const contentLayer = document.getElementById("content-layer");
 const progressBar = document.getElementById("progress-bar");
-const progressTicksContainer = document.getElementById("progress-ticks");
 
-let currentTopic = null;
-let currentSubtopic = null;
-let topicCompleted = false;
-let sectionCheckpoints = [];
+const lionCanvas = document.getElementById("bg-canvas");
+const lionCtx = lionCanvas.getContext("2d");
 
 // ===============================
-// Scroll Memory Helpers
+// Persistent Progress Store
 // ===============================
-function getScrollKey() {
-  if (!currentTopic) return null;
-  if (currentSubtopic) {
-    return `scroll:${currentTopic.id}:${currentSubtopic.id}`;
-  }
-  return `scroll:${currentTopic.id}`;
-}
+const STORAGE_KEY = "git-dominion-progress";
 
-function restoreScrollPosition() {
-  const key = getScrollKey();
-  if (!key) return;
+const progressState = JSON.parse(
+  localStorage.getItem(STORAGE_KEY) || "{}"
+);
 
-  const saved = localStorage.getItem(key);
-  if (saved !== null) {
-    requestAnimationFrame(() => {
-      content.scrollTop = parseFloat(saved);
-    });
-  }
+function markCompleted(subtopicId) {
+  progressState[subtopicId] = true;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(progressState));
+  updateSidebarTicks();
 }
 
 // ===============================
-// Page Transition Helper
+// Canvas Resize (CRITICAL)
 // ===============================
-function loadContent(html) {
-  content.classList.add("page-exit-active");
+const DPR = window.devicePixelRatio || 1;
 
-  setTimeout(() => {
-    content.innerHTML = html;
+function resizeLion() {
+  const w = content.clientWidth;
+  const h = content.clientHeight;
 
-    content.classList.remove("page-exit-active");
-    content.classList.add("page-enter");
+  lionCanvas.width = w * DPR;
+  lionCanvas.height = h * DPR;
+  lionCanvas.style.width = w + "px";
+  lionCanvas.style.height = h + "px";
 
-    requestAnimationFrame(() => {
-      content.classList.add("page-enter-active");
-    });
-
-    setTimeout(() => {
-      content.classList.remove("page-enter", "page-enter-active");
-
-      // Reset state for new content
-      topicCompleted = false;
-
-      // Re-init systems AFTER DOM update
-      observeReveals();
-      attachScrollProgress();
-      registerSectionCheckpoints();
-      restoreScrollPosition();
-
-    }, 300);
-  }, 200);
+  lionCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
 }
-
-// ===============================
-// Renderers
-// ===============================
-function renderTopic(topic) {
-  currentTopic = topic;
-  currentSubtopic = null;
-
-  const html = `
-    <h2 class="text-3xl font-bold mb-4 reveal">${topic.title}</h2>
-    <p class="mb-6 text-gray-700 reveal">${topic.intro}</p>
-
-    <h3 class="text-xl font-semibold mb-3 reveal">Subtopics</h3>
-    <ul class="space-y-3">
-      ${topic.subtopics
-        .map(
-          sub => `
-          <li class="reveal">
-            <button
-              class="text-left w-full p-3 rounded bg-gray-100 hover:bg-gray-200 transition subtopic-btn"
-              data-topic-id="${topic.id}"
-              data-subtopic-id="${sub.id}"
-            >
-              <h4 class="font-semibold">${sub.title}</h4>
-              <p class="text-sm text-gray-600">${sub.summary}</p>
-            </button>
-          </li>
-        `
-        )
-        .join("")}
-    </ul>
-  `;
-
-  loadContent(html);
-}
-
-function renderSubtopic(topicId, subtopicId) {
-  const topic = syllabus
-    .flatMap(level => level.topics)
-    .find(t => t.id === topicId);
-  if (!topic) return;
-
-  const subtopic = topic.subtopics.find(s => s.id === subtopicId);
-  if (!subtopic) return;
-
-  currentTopic = topic;
-  currentSubtopic = subtopic;
-
-  const html = `
-    <button class="mb-6 text-blue-600 hover:underline transition back-btn reveal">
-      ← Back to ${topic.title}
-    </button>
-
-    <section class="reading-section reveal">
-      ${subtopic.content}
-    </section>
-  `;
-
-  loadContent(html);
-}
-
-// ===============================
-// Click Delegation
-// ===============================
-content.addEventListener("click", e => {
-  const subBtn = e.target.closest(".subtopic-btn");
-  if (subBtn) {
-    renderSubtopic(subBtn.dataset.topicId, subBtn.dataset.subtopicId);
-    return;
-  }
-
-  const backBtn = e.target.closest(".back-btn");
-  if (backBtn) {
-    renderTopic(currentTopic);
-  }
-});
-
-// ===============================
-// Sidebar Integration
-// ===============================
-document.addEventListener("topic-selected", e => {
-  renderTopic(e.detail);
-});
-
-// ===============================
-// Initial Welcome Screen
-// ===============================
-loadContent(`
-  <h2 class="text-3xl font-bold mb-4 reveal">Welcome</h2>
-  <p class="text-gray-700 reveal">
-    Select a topic from the sidebar to begin your Git → GitHub mastery.
-  </p>
-`);
+resizeLion();
+window.addEventListener("resize", resizeLion);
 
 // ===============================
 // Reveal Animations
@@ -196,180 +79,232 @@ function observeReveals() {
 }
 
 // ===============================
-// Section Checkpoints (Progress Ticks)
-// ===============================
-function registerSectionCheckpoints() {
-  sectionCheckpoints = [];
-  if (!progressTicksContainer) return;
-
-  progressTicksContainer.innerHTML = "";
-
-  const sections = document.querySelectorAll(".reading-section");
-  if (!sections.length) return;
-
-  sections.forEach((sec, i) => {
-    const percent = (i / sections.length) * 100;
-
-    const tick = document.createElement("div");
-    tick.className = "progress-tick";
-    tick.style.left = `${percent}%`;
-
-    progressTicksContainer.appendChild(tick);
-
-    sectionCheckpoints.push({
-      el: sec,
-      tick,
-      reached: false
-    });
-  });
-}
-
-// ===============================
-// Scroll-Synced Progress Bar
-// + Completion Logic
+// Scroll Progress Bar
 // ===============================
 function attachScrollProgress() {
   progressBar.style.width = "0%";
 
   content.onscroll = () => {
-    const scrollTop = content.scrollTop;
-    const scrollHeight = content.scrollHeight - content.clientHeight;
-
-    // Save scroll position
-    const key = getScrollKey();
-    if (key) {
-      localStorage.setItem(key, scrollTop);
-    }
-
-    if (scrollHeight <= 0) {
-      progressBar.style.width = "0%";
-      return;
-    }
-
-    const progress = Math.min(
-      (scrollTop / scrollHeight) * 100,
-      100
-    );
-
-    progressBar.style.width = `${progress}%`;
-
-    // Activate section ticks
-    sectionCheckpoints.forEach(cp => {
-      if (!cp.reached) {
-        const rect = cp.el.getBoundingClientRect();
-        if (rect.top < window.innerHeight * 0.65) {
-          cp.reached = true;
-          cp.tick.classList.add("active");
-        }
-      }
-    });
-
-    // Completion trigger
-    if (progress >= 80 && !topicCompleted && currentTopic) {
-      topicCompleted = true;
-      markTopicCompleted(currentTopic.id);
-      unlockNextTopic(currentTopic.id);
-      showCompletionToast();
+    const max = content.scrollHeight - content.clientHeight;
+    if (max > 0) {
+      progressBar.style.width = `${(content.scrollTop / max) * 100}%`;
     }
   };
 }
 
 // ===============================
-// Completion + Unlock Logic
+// Content Rendering
 // ===============================
-function markTopicCompleted(topicId) {
-  let completed =
-    JSON.parse(localStorage.getItem("completedTopics")) || [];
+let currentTopic = null;
 
-  if (!completed.includes(topicId)) {
-    completed.push(topicId);
-    localStorage.setItem(
-      "completedTopics",
-      JSON.stringify(completed)
+function loadContent(html) {
+  contentLayer.innerHTML = html;
+  observeReveals();
+  attachScrollProgress();
+}
+
+// -------------------------------
+// Render Topic
+// -------------------------------
+function renderTopic(topic) {
+  currentTopic = topic;
+
+  loadContent(`
+    <h2 class="text-3xl font-bold mb-4 reveal">${topic.title}</h2>
+    <p class="mb-6 text-slate-200 reveal max-w-2xl">${topic.intro}</p>
+
+    <h3 class="text-xl font-semibold mb-4 reveal">Subtopics</h3>
+    <ul class="space-y-3">
+      ${topic.subtopics
+        .map(
+          sub => `
+        <li class="reveal">
+          <button
+            class="subtopic-btn w-full p-4 rounded-lg bg-slate-800 hover:bg-slate-700 transition text-left"
+            data-subtopic="${sub.id}">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold">${sub.title}</span>
+              ${
+                progressState[sub.id]
+                  ? `<span class="text-green-400 text-sm">✔</span>`
+                  : ``
+              }
+            </div>
+            <p class="text-sm text-slate-400 mt-1">${sub.summary}</p>
+          </button>
+        </li>
+      `
+        )
+        .join("")}
+    </ul>
+  `);
+}
+
+// -------------------------------
+// Render Subtopic
+// -------------------------------
+function renderSubtopic(topic, sub) {
+  markCompleted(sub.id);
+
+  loadContent(`
+    <button class="mb-6 text-teal-400 hover:underline reveal back-btn">
+      ← Back to ${topic.title}
+    </button>
+
+    <article class="prose prose-invert max-w-none reveal">
+      ${sub.content || `<p>No content available.</p>`}
+    </article>
+  `);
+}
+
+// ===============================
+// Click Delegation
+// ===============================
+contentLayer.addEventListener("click", e => {
+  const subBtn = e.target.closest(".subtopic-btn");
+  if (subBtn) {
+    const subId = subBtn.dataset.subtopic;
+    const topic = syllabus.flatMap(l => l.topics).find(t =>
+      t.subtopics.some(s => s.id === subId)
     );
+    const sub = topic.subtopics.find(s => s.id === subId);
+    renderSubtopic(topic, sub);
+    return;
   }
-}
 
-function unlockNextTopic(topicId) {
-  const flat = syllabus.flatMap(l => l.topics);
-  const index = flat.findIndex(t => t.id === topicId);
-
-  if (flat[index + 1]) {
-    flat[index + 1].locked = false;
+  const back = e.target.closest(".back-btn");
+  if (back && currentTopic) {
+    renderTopic(currentTopic);
   }
-}
+});
 
 // ===============================
-// Completion Feedback
+// Sidebar Integration
 // ===============================
-function showCompletionToast() {
-  const toast = document.createElement("div");
-  toast.className = "completion-toast";
-  toast.textContent = "✔ Concept Completed";
-
-  document.body.appendChild(toast);
-
-  setTimeout(() => {
-    toast.remove();
-  }, 2500);
-}
-
+document.addEventListener("topic-selected", e => {
+  renderTopic(e.detail);
+});
 
 // ===============================
-// PIXEL-BY-PIXEL IMAGE BUILD (10s)
+// Sidebar Completion Ticks
 // ===============================
-
-const canvas = document.getElementById("pixelCanvas");
-const ctx = canvas.getContext("2d");
-
-const img = new Image();
-img.src = "./assets/hero.png"; // your image
-
-img.onload = () => {
-  const w = canvas.width;
-  const h = canvas.height;
-
-  // Draw image once OFFSCREEN
-  const offCanvas = document.createElement("canvas");
-  offCanvas.width = w;
-  offCanvas.height = h;
-  const offCtx = offCanvas.getContext("2d");
-
-  offCtx.drawImage(img, 0, 0, w, h);
-
-  // Get pixel data
-  const imageData = offCtx.getImageData(0, 0, w, h);
-  const pixels = imageData.data;
-
-  ctx.clearRect(0, 0, w, h);
-
-  const totalPixels = w * h;
-  const duration = 10000; // 10 seconds
-  const startTime = performance.now();
-
-  function buildFrame(now) {
-    const elapsed = now - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-
-    // How many pixels to reveal
-    const pixelsToDraw = Math.floor(totalPixels * progress);
-
-    const frameData = ctx.createImageData(w, h);
-    const framePixels = frameData.data;
-
-    for (let i = 0; i < pixelsToDraw * 4; i += 4) {
-      framePixels[i]     = pixels[i];     // R
-      framePixels[i + 1] = pixels[i + 1]; // G
-      framePixels[i + 2] = pixels[i + 2]; // B
-      framePixels[i + 3] = pixels[i + 3]; // A
+function updateSidebarTicks() {
+  document.querySelectorAll("[data-subtopic-id]").forEach(el => {
+    const id = el.dataset.subtopicId;
+    if (progressState[id]) {
+      el.classList.add("completed");
     }
+  });
+}
 
-    ctx.putImageData(frameData, 0, 0);
+// ===============================
+// Initial Load
+// ===============================
+loadContent(`
+  <h2 class="text-3xl font-bold mb-4 reveal">Welcome</h2>
+  <p class="text-slate-300 reveal max-w-xl">
+    Select a topic from the sidebar to begin your Git → GitHub mastery.
+  </p>
+`);
 
-    if (progress < 1) {
-      requestAnimationFrame(buildFrame);
+// =================================================
+// 🦁 LION BACKGROUND — RUNTIME RESTORE (CRITICAL)
+// =================================================
+const lionImage = new Image();
+lionImage.src = "./assets/lion.png";
+
+let lionPixels = [];
+let lionStart = null;
+let breathing = 0;
+let scrollForce = 0;
+
+const cores = navigator.hardwareConcurrency || 4;
+const PIXEL = cores >= 8 ? 2 : cores >= 4 ? 3 : 4;
+
+let mouse = { x: -9999, y: -9999 };
+
+lionCanvas.addEventListener("mousemove", e => {
+  const r = lionCanvas.getBoundingClientRect();
+  mouse.x = e.clientX - r.left;
+  mouse.y = e.clientY - r.top;
+});
+
+content.addEventListener("scroll", () => {
+  scrollForce = Math.min(1, content.scrollTop / 300);
+});
+
+// ---------------- Image → Pixels ----------------
+lionImage.onload = () => {
+  const off = document.createElement("canvas");
+  off.width = lionImage.width;
+  off.height = lionImage.height;
+  const ctx = off.getContext("2d");
+  ctx.drawImage(lionImage, 0, 0);
+
+  const data = ctx.getImageData(0, 0, off.width, off.height).data;
+  const cw = lionCanvas.width / DPR;
+  const ch = lionCanvas.height / DPR;
+
+  const scale = Math.min(cw / off.width, ch / off.height) * 0.75;
+  const ox = (cw - off.width * scale) / 2;
+  const oy = (ch - off.height * scale) / 2;
+
+  lionPixels = [];
+
+  for (let y = 0; y < off.height; y += PIXEL) {
+    for (let x = 0; x < off.width; x += PIXEL) {
+      const i = (y * off.width + x) * 4;
+      const a = data[i + 3];
+      const b = data[i] + data[i + 1] + data[i + 2];
+      if (a > 30 && b < 620) {
+        lionPixels.push({
+          x: ox + x * scale,
+          y: oy + y * scale,
+          v: 1 - b / 765
+        });
+      }
     }
   }
 
-  requestAnimationFrame(buildFrame);
+  requestAnimationFrame(drawLion);
 };
+
+// ---------------- DRAW LOOP ----------------
+function drawLion(t) {
+  if (!lionStart) lionStart = t;
+  breathing += 0.015;
+
+  lionCtx.clearRect(
+    0,
+    0,
+    lionCanvas.width / DPR,
+    lionCanvas.height / DPR
+  );
+
+  const breath = Math.sin(breathing) * 0.12;
+
+  for (const px of lionPixels) {
+    const dx = px.x - mouse.x;
+    const dy = px.y - mouse.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    let intensity = px.v + breath + scrollForce * 0.4;
+    let alpha = 0.5;
+
+    if (dist < 60) {
+      intensity += 0.9;
+      alpha += 0.4;
+    }
+
+    lionCtx.fillStyle =
+      intensity > 1.3
+        ? `rgba(45,212,191,${alpha})`
+        : intensity > 0.8
+        ? `rgba(20,184,166,${alpha})`
+        : `rgba(15,118,110,${alpha * 0.8})`;
+
+    lionCtx.fillRect(px.x, px.y, PIXEL, PIXEL);
+  }
+
+  requestAnimationFrame(drawLion);
+}
